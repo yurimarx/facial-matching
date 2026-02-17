@@ -1,14 +1,43 @@
-version: '3.6'
 services:
-  iris:
+  facial-matching-data:
+    container_name: facial-matching-data
     build:
-      context: .
+      context: ./iris
       dockerfile: Dockerfile
+      target: final
+    restart: always
+    environment:
+      - ISC_CPF_MERGE_FILE=/home/irisowner/dev/merge.cpf
+    ports:
+      - "1972:1972"
+      - "52773:52773"
+      - "53773:53773"
+    volumes:
+      - ./iris:/home/irisowner/dev
+      - ./iris_data:/home/irisowner/dev/irissys/mgr/irisapp
+  facial-matching-api:
+    build: ./api
+    container_name: facial-matching-api
     restart: always
     ports:
-      - 1972
-      - 55038:52773
-      - 53773
-      - 55030:5000
+      - "5000:5000"
+    environment:
+      - TF_CPP_MIN_LOG_LEVEL=3
+      - IRIS_HOST=facial-matching-data
+      - IRIS_PORT=1972
+      - IRIS_NAMESPACE=USER
+      - IRIS_USER=_SYSTEM
+      - IRIS_PASSWORD=SYS
+    depends_on:
+      - facial-matching-data
     volumes:
-      - ./:/home/irisowner/dev
+      - ./api/.deepface/weights:/root/.deepface/weights
+
+  facial-matching-web:
+    build: ./web
+    container_name: facial-matching-web
+    restart: always
+    ports:
+      - "8501:8501"
+    depends_on:
+      - facial-matching-api
