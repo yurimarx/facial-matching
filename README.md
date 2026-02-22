@@ -31,6 +31,10 @@ $ docker-compose build
 $ docker-compose up -d
 ```
 
+## Tutorial and details
+
+https://community.intersystems.com/post/facial-recognition-intersystems-vector-search-and-deepface
+
 ## What does it do
 
 1. Open the App http://localhost:8501/.
