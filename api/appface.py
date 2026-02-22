@@ -6,9 +6,12 @@ import numpy as np
 import base64
 import cv2
 import json
+import threading
 
 app = Flask(__name__)
 CORS(app)
+
+MODEL_STATUS = "pending"
 
 IRIS_CONFIG = {
     "hostname": "facial-matching-data",
@@ -17,6 +20,20 @@ IRIS_CONFIG = {
     "username": "_SYSTEM",
     "password": "SYS"
 }
+
+def warm_up_models():
+    global MODEL_STATUS
+    MODEL_STATUS = "loading"
+    try:
+        dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
+
+        DeepFace.represent(dummy_img, model_name="VGG-Face", enforce_detection=False)
+
+        DeepFace.analyze(dummy_img, actions=['age', 'gender', 'race'], enforce_detection=False)
+        MODEL_STATUS = "ready"
+    except Exception as e:
+        print(f"Error during warm-up: {e}")
+        MODEL_STATUS = "error"
 
 def get_iris_connection():
     return iris.connect(
@@ -42,6 +59,10 @@ def extract_face_info(img_base64):
         "gender": analysis['dominant_gender'],
         "ethnicity": analysis['dominant_race']
     }
+
+@app.route('/api/status', methods=['GET'])
+def status():
+    return jsonify({"status": MODEL_STATUS})
 
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -148,5 +169,33 @@ def verify():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/people', methods=['GET'])
+def list_people():
+    try:
+        conn = get_iris_connection()
+        cursor = conn.cursor()
+        
+        sql = "SELECT SSN, Name, Age, Gender, Ethnicity FROM dc_facialmatching.FacialData"
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+        
+        people = []
+        for row in rows:
+            people.append({
+                "ssn": row[0],
+                "name": row[1],
+                "age": row[2],
+                "gender": row[3],
+                "ethnicity": row[4]
+            })
+            
+        cursor.close()
+        conn.close()
+        return jsonify({"people": people})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
+    threading.Thread(target=warm_up_models).start()
     app.run(host='0.0.0.0', port=5000, debug=True)

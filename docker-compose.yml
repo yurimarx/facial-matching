@@ -30,8 +30,6 @@ services:
       - IRIS_PASSWORD=SYS
     depends_on:
       - facial-matching-data
-    volumes:
-      - ./api/.deepface/weights:/root/.deepface/weights
 
   facial-matching-web:
     build: ./web

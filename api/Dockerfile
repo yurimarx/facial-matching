@@ -8,6 +8,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir flask flask-cors intersystems-irispython
 
+COPY download_models.py .
+RUN python download_models.py
+
 COPY . .
 
 ENV PYTHONDONTWRITEBYTECODE=1
