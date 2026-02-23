@@ -33,7 +33,9 @@ $ docker-compose up -d
 
 ## Tutorial and details
 
-https://community.intersystems.com/post/facial-recognition-intersystems-vector-search-and-deepface
+1. https://community.intersystems.com/post/facial-recognition-intersystems-vector-search-and-deepface
+
+2. https://community.intersystems.com/post/using-ai-calculate-family-resemblance
 
 ## What does it do
 
