@@ -5,16 +5,13 @@ import os
 def download():
     print("⏳ Starting DeepFace models download...")
     
-    # Create a dummy image to trigger the model loading/downloading
     dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
 
-    # Trigger VGG-Face model download
     print("Downloading VGG-Face...")
-    DeepFace.represent(dummy_img, model_name="VGG-Face", enforce_detection=False)
+    DeepFace.represent(dummy_img, model_name="VGG-Face", enforce_detection=False, detector_backend="retinaface")
 
-    # Trigger Age, Gender, Race models download
     print("Downloading Analysis models...")
-    DeepFace.analyze(dummy_img, actions=['age', 'gender', 'race'], enforce_detection=False)
+    DeepFace.analyze(dummy_img, actions=['age', 'gender', 'race'], enforce_detection=False, detector_backend="retinaface")
     
     print("✅ All models downloaded successfully.")
 

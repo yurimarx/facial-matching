@@ -16,7 +16,7 @@ try:
 except:
     pass 
 
-tab1, tab2, tab3 = st.tabs(["👤 Register User", "🔍 Search / Verify", "📄 Registered List"])
+tab1, tab2, tab3, tab4 = st.tabs(["👤 Register User", "🔍 Search / Verify", "📄 Registered List", "👪 Family Resemblance"])
 
 with tab1:
     
@@ -39,7 +39,6 @@ with tab1:
     
     reg_img = None
     if reg_source == "Camera":
-        # Use columns to constrain the camera input width and center it
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
             reg_img = st.camera_input("Take a registration photo", key=f"reg_cam_widget_{st.session_state.reset_key}", label_visibility="collapsed")
@@ -128,3 +127,61 @@ with tab3:
             st.error("Error fetching data from API.")
     except Exception as e:
         st.error(f"Connection failed: {e}")
+
+with tab4:
+    st.header("Calculate Family Resemblance")
+    st.info("Upload photos of the father, child, and mother to see the facial similarity percentages.")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.subheader("Father")
+        father_name = st.text_input("Father's Name", key="father_name")
+        father_img = st.file_uploader("Upload Father's Photo", type=['jpg', 'jpeg', 'png'], key="father_img")
+        if father_img:
+            st.image(father_img)
+
+    with col2:
+        st.subheader("Child")
+        child_name = st.text_input("Child's Name", key="child_name")
+        child_img = st.file_uploader("Upload Child's Photo", type=['jpg', 'jpeg', 'png'], key="child_img")
+        if child_img:
+            st.image(child_img)
+
+    with col3:
+        st.subheader("Mother")
+        mother_name = st.text_input("Mother's Name", key="mother_name")
+        mother_img = st.file_uploader("Upload Mother's Photo", type=['jpg', 'jpeg', 'png'], key="mother_img")
+        if mother_img:
+            st.image(mother_img)
+    
+    st.write("---")
+
+    if st.button("Calculate Resemblance", type="primary", key="btn_family"):
+        if not father_img or not child_img or not mother_img:
+            st.warning("⚠️ Please upload all three photos.")
+        else:
+            files = {
+                'father_image': ('father.jpg', father_img.getvalue(), 'image/jpeg'),
+                'child_image': ('child.jpg', child_img.getvalue(), 'image/jpeg'),
+                'mother_image': ('mother.jpg', mother_img.getvalue(), 'image/jpeg')
+            }
+            
+            with st.spinner("Analyzing faces and calculating resemblance..."):
+                try:
+                    res = requests.post(f"{API_URL}/verify_family", files=files)
+                    if res.status_code == 200:
+                        result = res.json()
+                        father_resemblance = result.get("resemblance_to_father", 0)
+                        mother_resemblance = result.get("resemblance_to_mother", 0)
+
+                        st.success("✅ Analysis Complete!")
+                        
+                        res_col1, res_col2 = st.columns(2)
+                        res_col1.metric(label=f"Resemblance to {father_name or 'Father'}", value=f"{father_resemblance:.2f}%")
+                        res_col2.metric(label=f"Resemblance to {mother_name or 'Mother'}", value=f"{mother_resemblance:.2f}%")
+
+                    else:
+                        st.error(f"❌ API Error: {res.json().get('error', 'Unknown error')}")
+                except Exception as e:
+                    st.error(f"📡 Connection Failed: {e}")

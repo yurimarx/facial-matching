@@ -27,9 +27,9 @@ def warm_up_models():
     try:
         dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
 
-        DeepFace.represent(dummy_img, model_name="VGG-Face", enforce_detection=False)
+        DeepFace.represent(dummy_img, model_name="VGG-Face", enforce_detection=False, detector_backend="retinaface")
 
-        DeepFace.analyze(dummy_img, actions=['age', 'gender', 'race'], enforce_detection=False)
+        DeepFace.analyze(dummy_img, actions=['age', 'gender', 'race'], enforce_detection=False, detector_backend="retinaface")
         MODEL_STATUS = "ready"
     except Exception as e:
         print(f"Error during warm-up: {e}")
@@ -49,9 +49,9 @@ def extract_face_info(img_base64):
     nparr = np.frombuffer(base64.b64decode(encoded_data), np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     
-    embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)[0]["embedding"]
+    embedding = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True, detector_backend="retinaface")[0]["embedding"]
     
-    analysis = DeepFace.analyze(img, actions=['age', 'gender', 'race'], enforce_detection=False)[0]
+    analysis = DeepFace.analyze(img, actions=['age', 'gender', 'race'], enforce_detection=False, detector_backend="retinaface")[0]
     
     return {
         "vector": embedding,
@@ -79,9 +79,9 @@ def register():
         nparr = np.frombuffer(filestr, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-        objs = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)
+        objs = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True, detector_backend="retinaface")
         embedding = objs[0]["embedding"]
-        analysis = DeepFace.analyze(img, actions=['age', 'gender', 'race'], enforce_detection=False)[0]
+        analysis = DeepFace.analyze(img, actions=['age', 'gender', 'race'], enforce_detection=False, detector_backend="retinaface")[0]
 
         conn = get_iris_connection()
         cursor = conn.cursor()
@@ -123,7 +123,7 @@ def verify():
         if img is None:
             return jsonify({"error": "Invalid file"}), 400
 
-        objs = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True)
+        objs = DeepFace.represent(img, model_name="VGG-Face", enforce_detection=True, detector_backend="retinaface")
         current_vector = objs[0]["embedding"]
         
         conn = get_iris_connection()
@@ -192,6 +192,52 @@ def list_people():
         cursor.close()
         conn.close()
         return jsonify({"people": people})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/verify_family', methods=['POST'])
+def verify_family():
+    try:
+        if 'father_image' not in request.files or \
+           'child_image' not in request.files or \
+           'mother_image' not in request.files:
+            return jsonify({"error": "Please upload all three images (father, child, mother)"}), 400
+
+        father_file = request.files['father_image']
+        child_file = request.files['child_image']
+        mother_file = request.files['mother_image']
+
+        father_img = cv2.imdecode(np.frombuffer(father_file.read(), np.uint8), cv2.IMREAD_COLOR)
+        child_img = cv2.imdecode(np.frombuffer(child_file.read(), np.uint8), cv2.IMREAD_COLOR)
+        mother_img = cv2.imdecode(np.frombuffer(mother_file.read(), np.uint8), cv2.IMREAD_COLOR)
+
+        if father_img is None or child_img is None or mother_img is None:
+            return jsonify({"error": "One or more images are invalid"}), 400
+
+        father_verification = DeepFace.verify(
+            img1_path=child_img,
+            img2_path=father_img,
+            model_name="VGG-Face",
+            detector_backend="retinaface",
+            enforce_detection=True
+        )
+
+        mother_verification = DeepFace.verify(
+            img1_path=child_img,
+            img2_path=mother_img,
+            model_name="VGG-Face",
+            detector_backend="retinaface",
+            enforce_detection=True
+        )
+
+        father_similarity = 1 - father_verification['distance']
+        mother_similarity = 1 - mother_verification['distance']
+
+        return jsonify({
+            "resemblance_to_father": father_similarity * 100,
+            "resemblance_to_mother": mother_similarity * 100
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
