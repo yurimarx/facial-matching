@@ -71,7 +71,7 @@ def register():
         name = request.form.get('name')
         
         if 'image' not in request.files:
-            return jsonify({"error": "Nenhum arquivo de imagem enviado"}), 400
+            return jsonify({"error": "No file sent"}), 400
         
         file = request.files['image']
         
